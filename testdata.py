@@ -1,74 +1,58 @@
+
 import pandas as pd
 import ta
 
 # Load data
-df = pd.read_csv(r'aapl.csv')
+df = pd.read_csv(r"C:\Users\Rohit Desale\OneDrive\Desktop\VWAP_RSI_Strategy\inf.csv")
 df["Datetime"] = pd.to_datetime(df["Datetime"])
 df.set_index("Datetime", inplace=True)
 
-# MACD indicators
+# MACD Histogram
 macd = ta.trend.MACD(close=df["Close"])
 df["macd_hist"] = macd.macd_diff()
 
-# Strategy parameters
-take_profit_pct = 0.05
-stop_loss_pct = 0.025
-
-# Strategy state
+# Strategy variables
 in_position = False
 entry_price = 0
 trades = []
 
-# Loop through data
-for i in range(2, len(df)):
-    h_now = df["macd_hist"].iloc[i]
-    h_prev = df["macd_hist"].iloc[i - 1]
+# Strategy loop
+for i in range(3, len(df)):
+    h = df["macd_hist"].iloc[i]
 
-    # Avoid divide-by-zero
-    if h_prev == 0:
-        continue
+    # Candle colors
+    c0 = df["Close"].iloc[i] > df["Open"].iloc[i]
+    c1 = df["Close"].iloc[i - 1] > df["Open"].iloc[i - 1]
+    c2 = df["Close"].iloc[i - 2] > df["Open"].iloc[i - 2]
 
-    diff = abs(h_now - h_prev)
-    slowdown = diff < 0.1 * abs(h_prev)
-
-    # --- BUY ---
-    if not in_position and h_now < 0 and slowdown:
+    # BUY: 2 red → 1 green + histogram < 0
+    if not in_position and h < 0 and not c2 and not c1 and c0:
         entry_price = df["Close"].iloc[i]
-        in_position = True
         trades.append({
             "type": "BUY",
             "time": df.index[i],
             "price": entry_price
         })
+        in_position = True
         continue
 
-    # --- SELL ---
-    if in_position:
-        price = df["Close"].iloc[i]
-        pnl = (price - entry_price) / entry_price
+    # SELL: 2 green → 1 red + histogram > 0
+    if in_position and h > 0 and c2 and c1 and not c0:
+        exit_price = df["Close"].iloc[i]
+        pnl = (exit_price - entry_price) / entry_price
+        trades.append({
+            "type": "SELL",
+            "time": df.index[i],
+            "price": exit_price,
+            "return_pct": round(pnl * 100, 2)
+        })
+        in_position = False
 
-        # Exit conditions
-        sell_slowdown = h_now > 0 and slowdown
-        if pnl >= take_profit_pct or pnl <= -stop_loss_pct or sell_slowdown:
-            trades.append({
-                "type": "SELL",
-                "time": df.index[i],
-                "price": price,
-                "return_pct": round(pnl * 100, 2),
-                "reason": (
-                    "TP" if pnl >= take_profit_pct else
-                    "SL" if pnl <= -stop_loss_pct else
-                    "Momentum fade"
-                )
-            })
-            in_position = False
-
-# Save results
+# Save and summarize
 results_df = pd.DataFrame(trades)
-results_df.to_csv("macd_momentum_slowdown_strategy.csv", index=False)
-print("✅ Strategy complete. Results saved to macd_momentum_slowdown_strategy.csv")
+results_df.to_csv("histogram_candle_strategy_nothreshold.csv", index=False)
+print("✅ Strategy complete. Results saved to histogram_candle_strategy_nothreshold.csv")
 
-# Summary
 if not results_df.empty:
     profits = results_df[results_df["type"] == "SELL"]["return_pct"]
     num_trades = len(profits)

@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Replace with your actual filename
-file_path = r"C:\Users\Rohit Desale\OneDrive\Desktop\VWAP_RSI_Strategy\eicher_15min.csv"
+file_path = "file.csv" # add the file
 
 # Load the CSV
 df = pd.read_csv(file_path)

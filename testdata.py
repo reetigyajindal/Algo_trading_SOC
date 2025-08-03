@@ -3,7 +3,7 @@ import pandas as pd
 import ta
 
 # Load data
-df = pd.read_csv(r"C:\Users\Rohit Desale\OneDrive\Desktop\VWAP_RSI_Strategy\inf.csv")
+df = pd.read_csv("file.csv")  # Add the company data file
 df["Datetime"] = pd.to_datetime(df["Datetime"])
 df.set_index("Datetime", inplace=True)
 
